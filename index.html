@@ -118,10 +118,16 @@
             border: var(--border-width) solid var(--border-color);
             /* Zieht den Block nach oben, damit sich die Rahmenlinien exakt überlagern */
             margin-top: calc(var(--border-width) * -1); 
+            cursor: grab; /* Signalisiert, dass Blöcke ziehbar sind */
         }
+        .block:active { cursor: grabbing; }
+
         .drop-area > .block:first-child { margin-top: 0; }
         
-        .editable { padding: 10px; outline: none; min-height: 20px; word-wrap: break-word; position: relative; z-index: 1;}
+        .editable { 
+            padding: 10px; outline: none; min-height: 20px; word-wrap: break-word; position: relative; z-index: 1;
+            cursor: text; /* Überschreibt den grab cursor über Text */
+        }
         .editable:focus { background-color: rgba(0,0,0,0.03); }
 
         /* Delete Button */
@@ -131,6 +137,11 @@
             display: none; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .block:hover > .delete-btn { display: block; }
+
+        /* Klasse, wenn ein Block gerade verschoben wird */
+        .dragging-active {
+            display: none !important;
+        }
 
         /* --- Layout Spezifisches --- */
         .break .editable { font-style: italic; font-weight: bold; color: #c0392b; }
@@ -266,7 +277,8 @@
                 <strong>Tipps:</strong><br>
                 • Klicke auf <b>+</b> im IF-Block, um ihn zur Mehrfachauswahl zu machen.<br>
                 • Das obere Titelfeld bestimmt den Datei-Namen.<br>
-                • <i>Text markieren</i> öffnet die Schriftgrößen-Optionen.
+                • <i>Text markieren</i> öffnet die Schriftgrößen-Optionen.<br>
+                • <i>Blöcke verschieben:</i> Einfach am Rand greifen.
             </div>
         </div>
 
@@ -293,6 +305,7 @@
         const textToolbar = document.getElementById('text-toolbar');
         
         let draggedType = null;
+        let draggedElement = null; // Neu: Speichert den existierenden Block, der gezogen wird
         let currentDrop = null; 
         
         // --- 1. History (Undo / Redo) ---
@@ -338,7 +351,7 @@
             canvas.innerHTML = '';
             document.getElementById('diagram-title').innerHTML = data.title;
             deserializeArea(data.blocks, canvas);
-            syncAllBranchLabels(); // Höhen der Äste synchronisieren
+            syncAllBranchLabels(); 
             updateHistoryButtons();
         }
 
@@ -353,21 +366,17 @@
         }
 
         // --- 2. Synchronisation der Höhen in Bedingungen ---
-        // Sorgt dafür, dass wenn Text in 'Wahr' umbricht, 'Falsch' mitwächst
         window.syncAllBranchLabels = function() {
             document.querySelectorAll('.condition').forEach(block => {
                 const labels = block.querySelectorAll(':scope > .condition-branches > .branch > .branch-label');
-                labels.forEach(l => l.style.height = 'auto'); // reset height
+                labels.forEach(l => l.style.height = 'auto'); 
                 let maxHeight = 0;
                 labels.forEach(l => { if (l.offsetHeight > maxHeight) maxHeight = l.offsetHeight; });
-                labels.forEach(l => l.style.height = maxHeight + 'px'); // auf selbe höhe setzen
+                labels.forEach(l => l.style.height = maxHeight + 'px'); 
             });
         };
 
-        // Überwache Texteingaben für Auto-Height-Sync
-        workspace.addEventListener('input', () => {
-            setTimeout(syncAllBranchLabels, 0); 
-        });
+        workspace.addEventListener('input', () => { setTimeout(syncAllBranchLabels, 0); });
         window.addEventListener('resize', syncAllBranchLabels);
 
         // --- 3. Floating Text Menü ---
@@ -431,10 +440,12 @@
             }
         });
 
-        // --- 4. Drag & Drop ---
+        // --- 4. Drag & Drop Logik ---
+        // Externe Blöcke (Sidebar)
         document.querySelectorAll('.toolbox-item').forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 draggedType = e.target.dataset.type;
+                draggedElement = null;
                 e.dataTransfer.effectAllowed = 'copy';
                 e.dataTransfer.setData('text/plain', draggedType);
                 document.body.classList.add('is-dragging'); 
@@ -446,11 +457,75 @@
             });
         });
 
+        // Existierende Blöcke drag-fähig machen, OHNE das Markieren von Text zu blockieren
+        workspace.addEventListener('mousedown', (e) => {
+            const block = e.target.closest('.block');
+            if (block) {
+                const isEditable = e.target.closest('.editable');
+                const isButton = e.target.closest('button');
+                // Erlaube Dragging nur, wenn wir nicht im Textbereich oder auf einem Button sind
+                if (!isEditable && !isButton) {
+                    block.setAttribute('draggable', 'true');
+                } else {
+                    block.removeAttribute('draggable');
+                }
+            }
+        });
+
+        // Dragging für existierende Blöcke aus dem Workspace heraus starten
+        workspace.addEventListener('dragstart', (e) => {
+            const block = e.target.closest('.block');
+            
+            // Verhindert das Ziehen von reinem Text nativ, wenn er markiert war
+            if (e.target.closest('.editable') && !block.hasAttribute('draggable')) {
+                e.preventDefault(); 
+                return;
+            }
+
+            if (block && !e.target.closest('.editable') && !e.target.closest('button')) {
+                draggedElement = block;
+                draggedType = null;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', 'move'); // Pflicht für Firefox
+                
+                // Der Timeout sorgt dafür, dass das Original kurz nach der Generierung 
+                // des nativen Drag-Bildes (Ghost) unsichtbar wird. So schließt sich 
+                // die Lücke sofort, aber der Geister-Block folgt weiterhin der Maus.
+                setTimeout(() => {
+                    block.classList.add('dragging-active');
+                    syncAllBranchLabels();
+                }, 0);
+
+                document.body.classList.add('is-dragging');
+                e.stopPropagation();
+            }
+        });
+
+        workspace.addEventListener('dragend', (e) => {
+            if (draggedElement) {
+                draggedElement.classList.remove('dragging-active');
+                draggedElement.removeAttribute('draggable');
+                draggedElement = null;
+                syncAllBranchLabels();
+            }
+            document.body.classList.remove('is-dragging');
+            indicator.style.display = 'none';
+            document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+
         workspace.addEventListener('dragover', (e) => {
             e.preventDefault(); 
-            if (!draggedType) return;
+            if (!draggedType && !draggedElement) return;
+
+            // Verhindert, dass man ein Element in sich selbst oder seine Unterelemente zieht
+            if (draggedElement && draggedElement.contains(e.target)) {
+                e.dataTransfer.dropEffect = 'none';
+                indicator.style.display = 'none';
+                document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
+                return;
+            }
             
-            e.dataTransfer.dropEffect = 'copy';
+            e.dataTransfer.dropEffect = draggedElement ? 'move' : 'copy';
             indicator.style.display = 'none';
             document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
 
@@ -462,6 +537,8 @@
 
             const closestBlock = e.target.closest('.block');
             if (closestBlock) {
+                if (draggedElement && draggedElement === closestBlock) return;
+
                 const rect = closestBlock.getBoundingClientRect();
                 const isTopHalf = (e.clientY - rect.top) < (rect.height / 2);
                 
@@ -485,25 +562,30 @@
             indicator.style.display = 'none';
             document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
 
-            if (!draggedType || !currentDrop) return;
+            if ((!draggedType && !draggedElement) || !currentDrop) return;
+            if (draggedElement && draggedElement.contains(currentDrop.target)) return;
 
-            const newBlock = createBlockHTML(draggedType);
+            // Bei einem Neu-Block generieren, ansonsten den existierenden Block referenzieren
+            const targetBlock = draggedElement ? draggedElement : createBlockHTML(draggedType);
+            
+            if (draggedElement) {
+                draggedElement.classList.remove('dragging-active');
+                draggedElement.removeAttribute('draggable');
+            }
+
             if (currentDrop.type === 'append') {
-                currentDrop.target.appendChild(newBlock);
+                currentDrop.target.appendChild(targetBlock);
             } else if (currentDrop.type === 'before') {
-                currentDrop.target.parentNode.insertBefore(newBlock, currentDrop.target);
+                currentDrop.target.parentNode.insertBefore(targetBlock, currentDrop.target);
             } else if (currentDrop.type === 'after') {
-                currentDrop.target.parentNode.insertBefore(newBlock, currentDrop.target.nextSibling);
+                currentDrop.target.parentNode.insertBefore(targetBlock, currentDrop.target.nextSibling);
             }
             
             draggedType = null;
+            draggedElement = null;
             currentDrop = null;
             syncAllBranchLabels();
             saveState(); 
-        });
-        
-        workspace.addEventListener('dragstart', (e) => {
-            if (e.target.classList.contains('editable')) e.preventDefault();
         });
 
         // --- 5. Dynamische If/Switch SVG Logik ---
@@ -575,7 +657,6 @@
         // --- 7. Hilfsfunktion für den Dateinamen ---
         function getSafeFileName(extension) {
             const rawTitle = document.getElementById('diagram-title').innerText.trim();
-            // Ersetze alle Sonderzeichen durch Unterstrich
             let safeTitle = rawTitle.replace(/[^a-z0-9äöüß]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
             if(!safeTitle) safeTitle = 'struktogramm';
             return safeTitle + extension;
@@ -584,7 +665,6 @@
         // --- 8. BILD EXPORT (html2canvas) ---
         window.exportAsImage = function() {
             const wrapperElement = document.getElementById('diagram-wrapper');
-            
             document.body.classList.add('is-exporting');
 
             setTimeout(() => {
@@ -596,7 +676,6 @@
                     link.download = getSafeFileName('.png');
                     link.href = canvas.toDataURL('image/png');
                     link.click();
-                    
                     document.body.classList.remove('is-exporting');
                 });
             }, 150);
@@ -719,7 +798,6 @@
                     const data = JSON.parse(e.target.result);
                     canvas.innerHTML = '';
                     
-                    // Titel wiederherstellen (Rückwärtskompatibel zu alten JSONs ohne Titel)
                     if (data.title !== undefined) {
                         document.getElementById('diagram-title').innerHTML = data.title;
                         deserializeArea(data.blocks, canvas);
