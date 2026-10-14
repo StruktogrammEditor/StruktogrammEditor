@@ -88,9 +88,9 @@
             display: flex; flex-direction: column;
         }
         #diagram-title {
-            font-size: 1.5rem; font-weight: bold; text-align: center;
+            font-size: 1.5rem; font-weight: bold; text-align: center; cursor: text;
             padding: 15px; border-bottom: var(--border-width) solid var(--border-color);
-            background: #fafafa; position: relative; z-index: 2;
+            background: #fafafa; position: relative; z-index: 2; outline: none;
         }
         
         #canvas {
@@ -103,7 +103,6 @@
             transition: background-color 0.2s, padding-bottom 0.3s;
             display: flex; flex-direction: column;
         }
-        /* Riesige Abwurfzonen beim Ziehen */
         body.is-dragging .drop-area { padding-bottom: 50px; }
         
         .drop-area.drag-over { background-color: var(--highlight-color) !important; }
@@ -116,19 +115,24 @@
         .block {
             width: 100%; box-sizing: border-box; background: var(--bg-color); position: relative;
             border: var(--border-width) solid var(--border-color);
-            /* Zieht den Block nach oben, damit sich die Rahmenlinien exakt überlagern */
             margin-top: calc(var(--border-width) * -1); 
-            cursor: grab; /* Signalisiert, dass Blöcke ziehbar sind */
+            cursor: grab; /* Standardmäßig greifbar */
         }
         .block:active { cursor: grabbing; }
-
         .drop-area > .block:first-child { margin-top: 0; }
         
+        /* Editierbare Textfelder - Standardmäßig verhalten sie sich wie der Block (greifbar) */
         .editable { 
             padding: 10px; outline: none; min-height: 20px; word-wrap: break-word; position: relative; z-index: 1;
-            cursor: text; /* Überschreibt den grab cursor über Text */
         }
-        .editable:focus { background-color: rgba(0,0,0,0.03); }
+        
+        /* Wenn man klickt und es aktiviert wird: */
+        .editable[contenteditable="true"] {
+            cursor: text;
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: inset 0 0 0 2px #3b82f6; /* Blaues Highlight im Editiermodus */
+            border-radius: 2px;
+        }
 
         /* Delete Button */
         .delete-btn {
@@ -138,24 +142,31 @@
         }
         .block:hover > .delete-btn { display: block; }
 
-        /* Klasse, wenn ein Block gerade verschoben wird */
-        .dragging-active {
-            display: none !important;
+        /* Drag Handle (als optischer Hinweis / sicherer Ankerpunkt) */
+        .drag-handle {
+            position: absolute; left: 4px; top: 6px; width: 20px; height: 24px;
+            cursor: grab; display: flex; align-items: center; justify-content: center;
+            color: #9ca3af; z-index: 10; opacity: 0; transition: opacity 0.2s, background-color 0.2s;
+            border-radius: 4px;
         }
+        .drag-handle:hover { color: #374151; background: rgba(0,0,0,0.05); }
+        .block:hover > .drag-handle { opacity: 1; }
+        .drag-handle:active { cursor: grabbing; }
+        .drag-handle svg { pointer-events: none; }
+
+        .statement > .editable, .break > .editable, .type-while > .loop-header { padding-left: 32px; }
+        .dragging-active { display: none !important; }
 
         /* --- Layout Spezifisches --- */
         .break .editable { font-style: italic; font-weight: bold; color: #c0392b; }
         .break .editable::before { content: '⮢ '; }
         
-        /* Bedingungen */
         .condition { display: flex; flex-direction: column; }
         .condition-header {
             text-align: center; position: relative; min-height: 60px; display: flex;
             align-items: center; justify-content: center;
         }
-        .bg-svg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
-        }
+        .bg-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         
         .condition-branches { display: flex; border-top: var(--border-width) solid var(--border-color); flex-grow: 1; }
         .branch { flex: 1; display: flex; flex-direction: column; border-right: var(--border-width) solid var(--border-color); position: relative; }
@@ -171,7 +182,6 @@
         .remove-case-btn { right: 2px; top: 2px; background: #e74c3c; width: 18px; height: 18px; font-size: 12px; display: none; }
         .branch:hover > .remove-case-btn { display: block; }
 
-        /* Schleifen */
         .loop-head, .loop-foot { display: flex; flex-direction: column; }
         .loop-header, .loop-footer { padding: 5px 10px; }
         .loop-body { margin-left: var(--loop-indent); flex-grow: 1; display: flex; flex-direction: column; }
@@ -184,8 +194,7 @@
         body.theme-modern { background-color: #f3f4f6; }
         body.theme-modern #diagram-wrapper {
             border: none; border-radius: 12px; padding: 20px;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 10px 10px -5px rgba(0,0,0,0.02);
-            gap: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 10px 10px -5px rgba(0,0,0,0.02); gap: 12px;
         }
         body.theme-modern #diagram-title {
             border-bottom: 2px solid #e5e7eb; background: transparent; padding: 0 0 15px 0;
@@ -193,10 +202,8 @@
         }
         body.theme-modern #canvas { gap: 12px; }
         body.theme-modern .block {
-            margin-top: 0;
-            border: 1px solid #e5e7eb; border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-            overflow: hidden;
+            margin-top: 0; border: 1px solid #e5e7eb; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); overflow: hidden;
         }
         body.theme-modern .block:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transform: translateY(-1px); }
         body.theme-modern .bg-svg { display: none; } 
@@ -228,40 +235,29 @@
         @keyframes popin { from { opacity: 0; transform: translateY(0); } to { opacity: 1; transform: translateY(-10px); } }
         #text-toolbar button { background: transparent; color: white; border: none; font-size: 14px; cursor: pointer; padding: 6px 10px; border-radius: 4px; font-weight: bold; }
         #text-toolbar button:hover { background: #444; }
-        #text-toolbar::after {
-            content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-            border-width: 6px 6px 0; border-style: solid; border-color: #222 transparent transparent transparent;
-        }
 
-        /* --- Export CSS (UI Elemente ausblenden) --- */
-        body.is-exporting .delete-btn, 
-        body.is-exporting .add-case-btn, 
-        body.is-exporting .remove-case-btn { display: none !important; }
+        /* --- Export CSS --- */
+        body.is-exporting .delete-btn, body.is-exporting .add-case-btn, 
+        body.is-exporting .remove-case-btn, body.is-exporting .drag-handle { display: none !important; }
         body.is-exporting .drop-area:empty::after { content: '' !important; }
         body.is-exporting #diagram-wrapper { box-shadow: none !important; margin: 0; }
-        body.is-exporting .editable { background-color: transparent !important; }
+        body.is-exporting .editable[contenteditable="true"] { box-shadow: none !important; background: transparent !important; }
 
     </style>
 </head>
 <body>
 
-    <!-- Menüleiste -->
     <div id="menu-bar">
         <div class="menu-title">StruktogrammEditor</div>
         <button class="menu-btn" onclick="newDiagram()">Neu</button>
         <button class="menu-btn" onclick="saveDiagram()">Speichern (JSON)</button>
         <button class="menu-btn" onclick="document.getElementById('file-upload').click()">Laden (JSON)</button>
         <input type="file" id="file-upload" accept=".json" style="display: none;" onchange="loadDiagram(event)">
-        
         <button class="menu-btn export-btn" onclick="exportAsImage()">📸 Als Bild exportieren</button>
-        
         <div class="menu-spacer"></div>
-        
         <button class="menu-btn" id="btn-undo" onclick="undo()" disabled>⮪ Zurück</button>
         <button class="menu-btn" id="btn-redo" onclick="redo()" disabled>⮫ Vor</button>
-        
         <div class="menu-spacer"></div>
-        
         <button class="menu-btn theme-btn" id="btn-theme" onclick="toggleTheme()">Ansicht: DIN 66261</button>
     </div>
 
@@ -275,16 +271,14 @@
             <div class="toolbox-item" draggable="true" data-type="break">Abbruch / Break</div>
             <div style="margin-top: auto; font-size: 0.85rem; color: #bdc3c7;">
                 <strong>Tipps:</strong><br>
-                • Klicke auf <b>+</b> im IF-Block, um ihn zur Mehrfachauswahl zu machen.<br>
-                • Das obere Titelfeld bestimmt den Datei-Namen.<br>
-                • <i>Text markieren</i> öffnet die Schriftgrößen-Optionen.<br>
-                • <i>Blöcke verschieben:</i> Einfach am Rand greifen.
+                • Klicke auf <b>+</b> im IF-Block für Mehrfachauswahl.<br>
+                • <i>Verschieben:</i> Halte den Block irgendwo gedrückt und ziehe ihn.<br>
+                • <i>Bearbeiten:</i> Klicke einfach kurz auf den Text.
             </div>
         </div>
 
         <div id="workspace">
             <div id="drop-indicator"></div>
-            <!-- DIAGRAMM WRAPPER -->
             <div id="diagram-wrapper">
                 <div id="diagram-title" class="editable" contenteditable="true">Unbenanntes Diagramm</div>
                 <div id="canvas" class="drop-area"></div>
@@ -292,7 +286,6 @@
         </div>
     </div>
 
-    <!-- Schwebendes Text-Menü -->
     <div id="text-toolbar">
         <button onmousedown="changeFontSize(-1, event)" title="Schrift kleiner">A-</button>
         <button onmousedown="changeFontSize(1, event)" title="Schrift größer">A+</button>
@@ -305,7 +298,7 @@
         const textToolbar = document.getElementById('text-toolbar');
         
         let draggedType = null;
-        let draggedElement = null; // Neu: Speichert den existierenden Block, der gezogen wird
+        let draggedElement = null;
         let currentDrop = null; 
         
         // --- 1. History (Undo / Redo) ---
@@ -315,12 +308,8 @@
         let beforeEditText = "";
 
         function saveState() {
-            const stateObj = {
-                title: document.getElementById('diagram-title').innerHTML,
-                blocks: serializeArea(canvas)
-            };
+            const stateObj = { title: document.getElementById('diagram-title').innerHTML, blocks: serializeArea(canvas) };
             const currentState = JSON.stringify(stateObj);
-            
             if (historyIndex >= 0 && historyStates[historyIndex] === currentState) return;
             historyStates = historyStates.slice(0, historyIndex + 1);
             historyStates.push(currentState);
@@ -334,34 +323,19 @@
             document.getElementById('btn-redo').disabled = (historyIndex >= historyStates.length - 1);
         }
 
-        function undo() {
-            if (historyIndex > 0) {
-                historyIndex--;
-                loadState(historyStates[historyIndex]);
-            }
-        }
-        function redo() {
-            if (historyIndex < historyStates.length - 1) {
-                historyIndex++;
-                loadState(historyStates[historyIndex]);
-            }
-        }
+        function undo() { if (historyIndex > 0) { historyIndex--; loadState(historyStates[historyIndex]); } }
+        function redo() { if (historyIndex < historyStates.length - 1) { historyIndex++; loadState(historyStates[historyIndex]); } }
+        
         function loadState(jsonString) {
-            const data = JSON.parse(jsonString);
-            canvas.innerHTML = '';
+            const data = JSON.parse(jsonString); canvas.innerHTML = '';
             document.getElementById('diagram-title').innerHTML = data.title;
-            deserializeArea(data.blocks, canvas);
-            syncAllBranchLabels(); 
-            updateHistoryButtons();
+            deserializeArea(data.blocks, canvas); syncAllBranchLabels(); updateHistoryButtons();
         }
 
         function newDiagram() {
             if(confirm("Neues Diagramm anfangen? Ungesicherte Änderungen gehen verloren.")) {
-                canvas.innerHTML = '';
-                document.getElementById('diagram-title').innerText = 'Unbenanntes Diagramm';
-                historyStates = [];
-                historyIndex = -1;
-                saveState(); 
+                canvas.innerHTML = ''; document.getElementById('diagram-title').innerText = 'Unbenanntes Diagramm';
+                historyStates = []; historyIndex = -1; saveState(); 
             }
         }
 
@@ -379,7 +353,7 @@
         workspace.addEventListener('input', () => { setTimeout(syncAllBranchLabels, 0); });
         window.addEventListener('resize', syncAllBranchLabels);
 
-        // --- 3. Floating Text Menü ---
+        // --- 3. Floating Text Menü & Textauswahl ---
         let currentSelectionRange = null;
 
         document.addEventListener('selectionchange', () => {
@@ -392,7 +366,6 @@
                 if (isEditable && selection.toString().trim().length > 0) {
                     currentSelectionRange = range;
                     const rect = range.getBoundingClientRect();
-                    
                     textToolbar.style.display = 'flex';
                     textToolbar.style.top = (rect.top - 45) + 'px';
                     textToolbar.style.left = Math.max(10, rect.left + (rect.width / 2) - (textToolbar.offsetWidth / 2)) + 'px';
@@ -406,335 +379,239 @@
             e.preventDefault(); 
             if (!currentSelectionRange) return;
             const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(currentSelectionRange);
+            sel.removeAllRanges(); sel.addRange(currentSelectionRange);
 
             let span = document.createElement("span");
             let parentElem = currentSelectionRange.commonAncestorContainer;
             if(parentElem.nodeType === 3) parentElem = parentElem.parentNode;
             let currentSize = parseFloat(window.getComputedStyle(parentElem).fontSize) || 16;
-            
             span.style.fontSize = (currentSize + (delta * 4)) + "px";
             
-            try {
-                currentSelectionRange.surroundContents(span);
-            } catch(err) {
-                document.execCommand("fontSize", false, delta > 0 ? 5 : 2);
-            }
-            syncAllBranchLabels();
-            saveState();
+            try { currentSelectionRange.surroundContents(span); } 
+            catch(err) { document.execCommand("fontSize", false, delta > 0 ? 5 : 2); }
+            syncAllBranchLabels(); saveState();
         };
 
-        workspace.addEventListener('focusin', (e) => {
-            if (e.target.classList.contains('editable')) beforeEditText = e.target.innerHTML;
-        });
-        workspace.addEventListener('focusout', (e) => {
-            if (e.target.classList.contains('editable') && e.target.innerHTML !== beforeEditText) saveState();
-        });
+        // --- 4. Interaktion: Klick vs Drag ---
 
+        // A) KLICKEN aktiviert den Editiermodus
         workspace.addEventListener('click', (e) => {
+            // Button-Funktionen (Löschen)
             if (e.target.classList.contains('delete-btn')) {
-                e.target.closest('.block').remove();
-                syncAllBranchLabels();
-                saveState();
+                e.target.closest('.block').remove(); syncAllBranchLabels(); saveState();
+                return;
             }
-        });
 
-        // --- 4. Drag & Drop Logik ---
-        // Externe Blöcke (Sidebar)
-        document.querySelectorAll('.toolbox-item').forEach(item => {
-            item.addEventListener('dragstart', (e) => {
-                draggedType = e.target.dataset.type;
-                draggedElement = null;
-                e.dataTransfer.effectAllowed = 'copy';
-                e.dataTransfer.setData('text/plain', draggedType);
-                document.body.classList.add('is-dragging'); 
-            });
-            item.addEventListener('dragend', () => {
-                document.body.classList.remove('is-dragging');
-                indicator.style.display = 'none';
-                document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
-            });
-        });
-
-        // Existierende Blöcke drag-fähig machen, OHNE das Markieren von Text zu blockieren
-        workspace.addEventListener('mousedown', (e) => {
-            const block = e.target.closest('.block');
-            if (block) {
-                const isEditable = e.target.closest('.editable');
-                const isButton = e.target.closest('button');
-                // Erlaube Dragging nur, wenn wir nicht im Textbereich oder auf einem Button sind
-                if (!isEditable && !isButton) {
-                    block.setAttribute('draggable', 'true');
-                } else {
-                    block.removeAttribute('draggable');
+            // Text-Feld angeklickt -> Editiermodus AN
+            const editable = e.target.closest('.editable');
+            if (editable && editable.id !== 'diagram-title') {
+                if (editable.getAttribute('contenteditable') !== 'true') {
+                    // Verhindern, dass der Eltern-Block beim Textmarkieren verschoben wird
+                    const block = editable.closest('.block');
+                    if (block) block.setAttribute('draggable', 'false');
+                    
+                    editable.setAttribute('contenteditable', 'true');
+                    editable.focus();
                 }
             }
         });
 
-        // Dragging für existierende Blöcke aus dem Workspace heraus starten
+        // B) VERLASSEN des Feldes (Klick nach draußen) beendet den Editiermodus
+        workspace.addEventListener('focusin', (e) => { if (e.target.classList.contains('editable')) beforeEditText = e.target.innerHTML; });
+        workspace.addEventListener('focusout', (e) => {
+            const editable = e.target;
+            if (editable.classList.contains('editable')) {
+                if (editable.id !== 'diagram-title') {
+                    editable.removeAttribute('contenteditable');
+                    const block = editable.closest('.block');
+                    if (block) block.setAttribute('draggable', 'true'); // Block wieder ziehbar machen
+                }
+                if (editable.innerHTML !== beforeEditText) saveState();
+                syncAllBranchLabels();
+            }
+        });
+
+        // Wenn man das Drag-Handle klickt, wird der Editiermodus von allem sofort abgebrochen 
+        // und Drag & Drop für den Block forciert
+        workspace.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.drag-handle')) {
+                const block = e.target.closest('.block');
+                if (block) block.setAttribute('draggable', 'true');
+                if (document.activeElement && document.activeElement.classList.contains('editable')) {
+                    document.activeElement.blur();
+                }
+            }
+        });
+
+        // C) DRAG & DROP
+        document.querySelectorAll('.toolbox-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedType = e.target.dataset.type; draggedElement = null;
+                e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', draggedType);
+                document.body.classList.add('is-dragging'); 
+            });
+            item.addEventListener('dragend', () => {
+                document.body.classList.remove('is-dragging'); indicator.style.display = 'none';
+                document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
+            });
+        });
+
         workspace.addEventListener('dragstart', (e) => {
             const block = e.target.closest('.block');
+            if (!block) return;
             
-            // Verhindert das Ziehen von reinem Text nativ, wenn er markiert war
-            if (e.target.closest('.editable') && !block.hasAttribute('draggable')) {
-                e.preventDefault(); 
+            // Wenn der Text gerade im Editiermodus ist, lassen wir das native Text-Markieren zu
+            if (e.target.closest('.editable') && e.target.closest('.editable').getAttribute('contenteditable') === 'true') {
                 return;
             }
 
-            if (block && !e.target.closest('.editable') && !e.target.closest('button')) {
-                draggedElement = block;
-                draggedType = null;
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', 'move'); // Pflicht für Firefox
+            if (!e.target.closest('button')) {
+                draggedElement = block; draggedType = null;
+                e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'move'); 
                 
-                // Der Timeout sorgt dafür, dass das Original kurz nach der Generierung 
-                // des nativen Drag-Bildes (Ghost) unsichtbar wird. So schließt sich 
-                // die Lücke sofort, aber der Geister-Block folgt weiterhin der Maus.
-                setTimeout(() => {
-                    block.classList.add('dragging-active');
-                    syncAllBranchLabels();
-                }, 0);
-
-                document.body.classList.add('is-dragging');
-                e.stopPropagation();
+                setTimeout(() => { block.classList.add('dragging-active'); syncAllBranchLabels(); }, 0);
+                document.body.classList.add('is-dragging'); e.stopPropagation();
             }
         });
 
         workspace.addEventListener('dragend', (e) => {
-            if (draggedElement) {
-                draggedElement.classList.remove('dragging-active');
-                draggedElement.removeAttribute('draggable');
-                draggedElement = null;
-                syncAllBranchLabels();
-            }
-            document.body.classList.remove('is-dragging');
-            indicator.style.display = 'none';
+            if (draggedElement) { draggedElement.classList.remove('dragging-active'); draggedElement = null; syncAllBranchLabels(); }
+            document.body.classList.remove('is-dragging'); indicator.style.display = 'none';
             document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
         });
 
         workspace.addEventListener('dragover', (e) => {
             e.preventDefault(); 
             if (!draggedType && !draggedElement) return;
-
-            // Verhindert, dass man ein Element in sich selbst oder seine Unterelemente zieht
             if (draggedElement && draggedElement.contains(e.target)) {
-                e.dataTransfer.dropEffect = 'none';
-                indicator.style.display = 'none';
-                document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
-                return;
+                e.dataTransfer.dropEffect = 'none'; indicator.style.display = 'none';
+                document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over')); return;
             }
-            
             e.dataTransfer.dropEffect = draggedElement ? 'move' : 'copy';
-            indicator.style.display = 'none';
-            document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
+            indicator.style.display = 'none'; document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
 
             if (e.target.classList.contains('drop-area')) {
-                currentDrop = { type: 'append', target: e.target };
-                e.target.classList.add('drag-over');
-                return; 
+                currentDrop = { type: 'append', target: e.target }; e.target.classList.add('drag-over'); return; 
             }
 
             const closestBlock = e.target.closest('.block');
             if (closestBlock) {
                 if (draggedElement && draggedElement === closestBlock) return;
-
                 const rect = closestBlock.getBoundingClientRect();
                 const isTopHalf = (e.clientY - rect.top) < (rect.height / 2);
-                
                 currentDrop = { type: isTopHalf ? 'before' : 'after', target: closestBlock };
-                indicator.style.display = 'block';
-                indicator.style.left = rect.left + 'px';
-                indicator.style.width = rect.width + 'px';
-                indicator.style.top = (isTopHalf ? rect.top : rect.bottom) + 'px';
+                indicator.style.display = 'block'; indicator.style.left = rect.left + 'px';
+                indicator.style.width = rect.width + 'px'; indicator.style.top = (isTopHalf ? rect.top : rect.bottom) + 'px';
             }
         });
 
         workspace.addEventListener('dragleave', (e) => {
             if (!e.relatedTarget || e.relatedTarget.nodeName === 'HTML') {
-                indicator.style.display = 'none';
-                document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
+                indicator.style.display = 'none'; document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
             }
         });
 
         workspace.addEventListener('drop', (e) => {
-            e.preventDefault();
-            indicator.style.display = 'none';
+            e.preventDefault(); indicator.style.display = 'none';
             document.querySelectorAll('.drop-area.drag-over').forEach(el => el.classList.remove('drag-over'));
 
             if ((!draggedType && !draggedElement) || !currentDrop) return;
             if (draggedElement && draggedElement.contains(currentDrop.target)) return;
 
-            // Bei einem Neu-Block generieren, ansonsten den existierenden Block referenzieren
             const targetBlock = draggedElement ? draggedElement : createBlockHTML(draggedType);
-            
-            if (draggedElement) {
-                draggedElement.classList.remove('dragging-active');
-                draggedElement.removeAttribute('draggable');
-            }
+            if (draggedElement) draggedElement.classList.remove('dragging-active');
 
-            if (currentDrop.type === 'append') {
-                currentDrop.target.appendChild(targetBlock);
-            } else if (currentDrop.type === 'before') {
-                currentDrop.target.parentNode.insertBefore(targetBlock, currentDrop.target);
-            } else if (currentDrop.type === 'after') {
-                currentDrop.target.parentNode.insertBefore(targetBlock, currentDrop.target.nextSibling);
-            }
+            if (currentDrop.type === 'append') { currentDrop.target.appendChild(targetBlock); } 
+            else if (currentDrop.type === 'before') { currentDrop.target.parentNode.insertBefore(targetBlock, currentDrop.target); } 
+            else if (currentDrop.type === 'after') { currentDrop.target.parentNode.insertBefore(targetBlock, currentDrop.target.nextSibling); }
             
-            draggedType = null;
-            draggedElement = null;
-            currentDrop = null;
-            syncAllBranchLabels();
-            saveState(); 
+            draggedType = null; draggedElement = null; currentDrop = null; syncAllBranchLabels(); saveState(); 
         });
 
         // --- 5. Dynamische If/Switch SVG Logik ---
         function updateConditionSVG(block) {
-            const svg = block.querySelector('.bg-svg');
-            if (!svg) return;
+            const svg = block.querySelector('.bg-svg'); if (!svg) return;
             const branchCount = block.querySelectorAll(':scope > .condition-branches > .branch').length;
-            
-            if (branchCount <= 2) {
-                svg.innerHTML = `
-                    <line x1="0" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>
-                    <line x1="100%" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>
-                `;
-            } else {
-                svg.innerHTML = `
-                    <polygon points="0,0 100%,0 75%,100% 25%,100%" fill="none" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>
-                `;
-            }
+            if (branchCount <= 2) { svg.innerHTML = `<line x1="0" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/><line x1="100%" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>`; } 
+            else { svg.innerHTML = `<polygon points="0,0 100%,0 75%,100% 25%,100%" fill="none" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>`; }
         }
 
         window.addBranch = function(btn) {
-            const block = btn.closest('.condition');
-            const branchesContainer = block.querySelector(':scope > .condition-branches');
-            const newBranch = document.createElement('div');
-            newBranch.className = 'branch';
-            newBranch.innerHTML = `
-                <button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button>
-                <div class="branch-label editable" contenteditable="true">Neuer Fall</div>
-                <div class="drop-area"></div>
-            `;
-            branchesContainer.appendChild(newBranch);
-            updateConditionSVG(block);
-            syncAllBranchLabels();
-            saveState();
+            const block = btn.closest('.condition'); const branchesContainer = block.querySelector(':scope > .condition-branches');
+            const newBranch = document.createElement('div'); newBranch.className = 'branch';
+            newBranch.innerHTML = `<button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button><div class="branch-label editable">Neuer Fall</div><div class="drop-area"></div>`;
+            branchesContainer.appendChild(newBranch); updateConditionSVG(block); syncAllBranchLabels(); saveState();
         };
 
         window.removeBranch = function(btn) {
-            const branch = btn.closest('.branch');
-            const block = btn.closest('.condition');
+            const branch = btn.closest('.branch'); const block = btn.closest('.condition');
             const branchesContainer = branch.parentElement;
-            
-            if (branchesContainer.children.length > 2) {
-                branch.remove();
-                updateConditionSVG(block);
-                syncAllBranchLabels();
-                saveState();
-            } else {
-                alert("Eine Bedingung muss mindestens zwei Ausgänge haben!");
-            }
+            if (branchesContainer.children.length > 2) { branch.remove(); updateConditionSVG(block); syncAllBranchLabels(); saveState(); } 
+            else { alert("Eine Bedingung muss mindestens zwei Ausgänge haben!"); }
         };
 
-        // --- 6. Theme Toggle ---
         window.toggleTheme = function() {
-            const body = document.body;
-            body.classList.toggle('theme-modern');
+            const body = document.body; body.classList.toggle('theme-modern');
             const btn = document.getElementById('btn-theme');
-            
-            if(body.classList.contains('theme-modern')) {
-                btn.innerHTML = "Ansicht: Modern (Web)";
-                btn.style.backgroundColor = "#8b5cf6"; 
-                btn.style.borderColor = "#7c3aed";
-            } else {
-                btn.innerHTML = "📐 Ansicht: DIN 66261";
-                btn.style.backgroundColor = ""; 
-                btn.style.borderColor = "";
-            }
+            if(body.classList.contains('theme-modern')) { btn.innerHTML = "Ansicht: Modern (Web)"; btn.style.backgroundColor = "#8b5cf6"; btn.style.borderColor = "#7c3aed"; } 
+            else { btn.innerHTML = "📐 Ansicht: DIN 66261"; btn.style.backgroundColor = ""; btn.style.borderColor = ""; }
         };
 
-        // --- 7. Hilfsfunktion für den Dateinamen ---
         function getSafeFileName(extension) {
             const rawTitle = document.getElementById('diagram-title').innerText.trim();
             let safeTitle = rawTitle.replace(/[^a-z0-9äöüß]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-            if(!safeTitle) safeTitle = 'struktogramm';
-            return safeTitle + extension;
+            if(!safeTitle) safeTitle = 'struktogramm'; return safeTitle + extension;
         }
 
-        // --- 8. BILD EXPORT (html2canvas) ---
         window.exportAsImage = function() {
             const wrapperElement = document.getElementById('diagram-wrapper');
             document.body.classList.add('is-exporting');
-
             setTimeout(() => {
-                html2canvas(wrapperElement, {
-                    scale: 3, 
-                    backgroundColor: getComputedStyle(wrapperElement).backgroundColor
-                }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = getSafeFileName('.png');
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
+                html2canvas(wrapperElement, { scale: 3, backgroundColor: getComputedStyle(wrapperElement).backgroundColor }).then(canvas => {
+                    const link = document.createElement('a'); link.download = getSafeFileName('.png');
+                    link.href = canvas.toDataURL('image/png'); link.click();
                     document.body.classList.remove('is-exporting');
                 });
             }, 150);
         };
 
         // --- 9. HTML Generator ---
+        // WICHTIG: Blöcke haben jetzt `draggable="true"`, Textfelder `contenteditable` wurde entfernt
         function createBlockHTML(type) {
             const temp = document.createElement('div');
             const delBtn = `<button class="delete-btn" title="Löschen">×</button>`;
+            const dragBtn = `<div class="drag-handle" title="Block verschieben"><svg viewBox="0 0 10 16" width="10" height="16" fill="currentColor"><circle cx="2" cy="2" r="1.5"></circle><circle cx="8" cy="2" r="1.5"></circle><circle cx="2" cy="8" r="1.5"></circle><circle cx="8" cy="8" r="1.5"></circle><circle cx="2" cy="14" r="1.5"></circle><circle cx="8" cy="14" r="1.5"></circle></svg></div>`;
 
             switch(type) {
                 case 'statement':
-                    temp.innerHTML = `<div class="block statement">${delBtn}<div class="editable" contenteditable="true">Anweisung / Operation</div></div>`;
-                    break;
+                    temp.innerHTML = `<div class="block statement" draggable="true">${delBtn}${dragBtn}<div class="editable">Anweisung / Operation</div></div>`; break;
                 case 'break':
-                    temp.innerHTML = `<div class="block break">${delBtn}<div class="editable" contenteditable="true">Abbruch (Break)</div></div>`;
-                    break;
+                    temp.innerHTML = `<div class="block break" draggable="true">${delBtn}${dragBtn}<div class="editable">Abbruch (Break)</div></div>`; break;
                 case 'if':
                     temp.innerHTML = `
-                        <div class="block condition type-if">
-                            ${delBtn}
+                        <div class="block condition type-if" draggable="true">${delBtn}${dragBtn}
                             <div class="condition-header">
-                                <svg class="bg-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                    <line x1="0" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>
-                                    <line x1="100%" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/>
-                                </svg>
-                                <div class="editable" contenteditable="true">Bedingung?</div>
+                                <svg class="bg-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 100 100"><line x1="0" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/><line x1="100%" y1="0" x2="50%" y2="100%" stroke="black" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+                                <div class="editable">Bedingung?</div>
                                 <button class="add-case-btn" onclick="addBranch(this)" title="Option hinzufügen">+</button>
                             </div>
                             <div class="condition-branches">
-                                <div class="branch">
-                                    <button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button>
-                                    <div class="branch-label editable" contenteditable="true">Wahr</div>
-                                    <div class="drop-area"></div>
-                                </div>
-                                <div class="branch">
-                                    <button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button>
-                                    <div class="branch-label editable" contenteditable="true">Falsch</div>
-                                    <div class="drop-area"></div>
-                                </div>
+                                <div class="branch"><button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button><div class="branch-label editable">Wahr</div><div class="drop-area"></div></div>
+                                <div class="branch"><button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button><div class="branch-label editable">Falsch</div><div class="drop-area"></div></div>
                             </div>
-                        </div>`;
-                    break;
+                        </div>`; break;
                 case 'while':
                     temp.innerHTML = `
-                        <div class="block loop-head type-while">
-                            ${delBtn}
-                            <div class="loop-header editable" contenteditable="true">Solange (Bedingung) tue:</div>
+                        <div class="block loop-head type-while" draggable="true">${delBtn}${dragBtn}
+                            <div class="loop-header editable">Solange (Bedingung) tue:</div>
                             <div class="loop-body"><div class="drop-area"></div></div>
-                        </div>`;
-                    break;
+                        </div>`; break;
                 case 'dowhile':
                     temp.innerHTML = `
-                        <div class="block loop-foot type-dowhile">
-                            ${delBtn}
+                        <div class="block loop-foot type-dowhile" draggable="true">${delBtn}${dragBtn}
                             <div class="loop-body"><div class="drop-area"></div></div>
-                            <div class="loop-footer editable" contenteditable="true">Wiederhole bis (Bedingung)</div>
-                        </div>`;
-                    break;
+                            <div class="loop-footer editable">Wiederhole bis (Bedingung)</div>
+                        </div>`; break;
             }
             return temp.firstElementChild;
         }
@@ -744,30 +621,19 @@
             const blocks = [];
             for (let child of areaNode.children) {
                 if (!child.classList.contains('block')) continue;
-                
                 let data = {};
-                if (child.classList.contains('statement')) {
-                    data.type = 'statement'; data.text = child.querySelector(':scope > .editable').innerHTML;
-                } else if (child.classList.contains('break')) {
-                    data.type = 'break'; data.text = child.querySelector(':scope > .editable').innerHTML;
-                } else if (child.classList.contains('type-while')) {
-                    data.type = 'while'; data.text = child.querySelector(':scope > .loop-header').innerHTML;
-                    data.content = serializeArea(child.querySelector(':scope > .loop-body > .drop-area'));
-                } else if (child.classList.contains('type-dowhile')) {
-                    data.type = 'dowhile'; data.text = child.querySelector(':scope > .loop-footer').innerHTML;
-                    data.content = serializeArea(child.querySelector(':scope > .loop-body > .drop-area'));
-                } else if (child.classList.contains('type-if') || child.classList.contains('type-switch')) {
+                if (child.classList.contains('statement')) { data.type = 'statement'; data.text = child.querySelector(':scope > .editable').innerHTML; } 
+                else if (child.classList.contains('break')) { data.type = 'break'; data.text = child.querySelector(':scope > .editable').innerHTML; } 
+                else if (child.classList.contains('type-while')) { data.type = 'while'; data.text = child.querySelector(':scope > .loop-header').innerHTML; data.content = serializeArea(child.querySelector(':scope > .loop-body > .drop-area')); } 
+                else if (child.classList.contains('type-dowhile')) { data.type = 'dowhile'; data.text = child.querySelector(':scope > .loop-footer').innerHTML; data.content = serializeArea(child.querySelector(':scope > .loop-body > .drop-area')); } 
+                else if (child.classList.contains('type-if') || child.classList.contains('type-switch')) {
                     data.type = 'if'; 
                     const headerTxt = child.querySelector(':scope > .condition-header > .editable, :scope > .switch-header > .editable');
-                    data.text = headerTxt ? headerTxt.innerHTML : "";
-                    data.branches = [];
+                    data.text = headerTxt ? headerTxt.innerHTML : ""; data.branches = [];
                     const branchesContainer = child.querySelector(':scope > .condition-branches');
                     for (let b of branchesContainer.children) {
                         if (b.classList.contains('branch')) {
-                            data.branches.push({
-                                label: b.querySelector(':scope > .branch-label').innerHTML,
-                                content: serializeArea(b.querySelector(':scope > .drop-area'))
-                            });
+                            data.branches.push({ label: b.querySelector(':scope > .branch-label').innerHTML, content: serializeArea(b.querySelector(':scope > .drop-area')) });
                         }
                     }
                 }
@@ -777,71 +643,45 @@
         }
 
         window.saveDiagram = function() {
-            const stateObj = {
-                title: document.getElementById('diagram-title').innerHTML,
-                blocks: serializeArea(canvas)
-            };
+            const stateObj = { title: document.getElementById('diagram-title').innerHTML, blocks: serializeArea(canvas) };
             const blob = new Blob([JSON.stringify(stateObj, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; 
-            a.download = getSafeFileName('.json');
-            
+            const a = document.createElement('a'); a.href = url; a.download = getSafeFileName('.json');
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         };
 
         window.loadDiagram = function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    canvas.innerHTML = '';
-                    
-                    if (data.title !== undefined) {
-                        document.getElementById('diagram-title').innerHTML = data.title;
-                        deserializeArea(data.blocks, canvas);
-                    } else {
-                        document.getElementById('diagram-title').innerText = "Unbenanntes Diagramm";
-                        deserializeArea(data, canvas);
-                    }
-                    
-                    syncAllBranchLabels();
-                    historyStates = []; historyIndex = -1; saveState();
+                    const data = JSON.parse(e.target.result); canvas.innerHTML = '';
+                    if (data.title !== undefined) { document.getElementById('diagram-title').innerHTML = data.title; deserializeArea(data.blocks, canvas); } 
+                    else { document.getElementById('diagram-title').innerText = "Unbenanntes Diagramm"; deserializeArea(data, canvas); }
+                    syncAllBranchLabels(); historyStates = []; historyIndex = -1; saveState();
                 } catch (err) { alert("Fehler beim Laden: " + err.message); }
             };
-            reader.readAsText(file);
-            event.target.value = '';
+            reader.readAsText(file); event.target.value = '';
         };
 
         function deserializeArea(blocksData, targetArea) {
             blocksData.forEach(data => {
-                const blockType = (data.type === 'switch') ? 'if' : data.type;
-                const block = createBlockHTML(blockType);
+                const blockType = (data.type === 'switch') ? 'if' : data.type; const block = createBlockHTML(blockType);
                 
-                if (blockType === 'statement' || blockType === 'break') {
-                    block.querySelector(':scope > .editable').innerHTML = data.text;
-                } else if (blockType === 'while') {
-                    block.querySelector(':scope > .loop-header').innerHTML = data.text; 
-                    deserializeArea(data.content, block.querySelector(':scope > .loop-body > .drop-area'));
-                } else if (blockType === 'dowhile') {
-                    block.querySelector(':scope > .loop-footer').innerHTML = data.text; 
-                    deserializeArea(data.content, block.querySelector(':scope > .loop-body > .drop-area'));
-                } else if (blockType === 'if') {
+                if (blockType === 'statement' || blockType === 'break') { block.querySelector(':scope > .editable').innerHTML = data.text; } 
+                else if (blockType === 'while') { block.querySelector(':scope > .loop-header').innerHTML = data.text; deserializeArea(data.content, block.querySelector(':scope > .loop-body > .drop-area')); } 
+                else if (blockType === 'dowhile') { block.querySelector(':scope > .loop-footer').innerHTML = data.text; deserializeArea(data.content, block.querySelector(':scope > .loop-body > .drop-area')); } 
+                else if (blockType === 'if') {
                     block.querySelector(':scope > .condition-header > .editable').innerHTML = data.text;
-                    const container = block.querySelector(':scope > .condition-branches'); 
-                    container.innerHTML = '';
-                    
+                    const container = block.querySelector(':scope > .condition-branches'); container.innerHTML = '';
                     const branchesList = data.branches || [data.trueBranch, data.falseBranch].filter(Boolean);
 
                     branchesList.forEach(branchData => {
                         const newBranch = document.createElement('div'); newBranch.className = 'branch';
-                        newBranch.innerHTML = `<button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button><div class="branch-label editable" contenteditable="true"></div><div class="drop-area"></div>`;
+                        newBranch.innerHTML = `<button class="remove-case-btn" onclick="removeBranch(this)" title="Option entfernen">-</button><div class="branch-label editable"></div><div class="drop-area"></div>`;
                         newBranch.querySelector('.branch-label').innerHTML = branchData.label;
-                        deserializeArea(branchData.content, newBranch.querySelector(':scope > .drop-area'));
-                        container.appendChild(newBranch);
+                        deserializeArea(branchData.content, newBranch.querySelector(':scope > .drop-area')); container.appendChild(newBranch);
                     });
-                    
                     updateConditionSVG(block);
                 }
                 targetArea.appendChild(block);
